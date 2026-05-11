@@ -10,3 +10,13 @@ export function adminOnlyMiddleware(req: Request, res: Response, next: NextFunct
     next();
   });
 }
+
+export function superAdminOnlyMiddleware(req: Request, res: Response, next: NextFunction): void {
+  authMiddleware(req, res, () => {
+    if (req.userRole !== "SUPERADMIN") {
+      res.status(403).json({ error: "Access denied. Super Admin role required." });
+      return;
+    }
+    next();
+  });
+}

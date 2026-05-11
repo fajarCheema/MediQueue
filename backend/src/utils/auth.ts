@@ -1,35 +1,37 @@
 import { Role } from "@prisma/client/edge";
 import bcryptjs from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "";
-const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || "1h";
-const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || "7d";
+const ACCESS_TOKEN_EXPIRY = (process.env.ACCESS_TOKEN_EXPIRY ||
+  "1h") as SignOptions["expiresIn"];
+const REFRESH_TOKEN_EXPIRY = (process.env.REFRESH_TOKEN_EXPIRY ||
+  "7d") as SignOptions["expiresIn"];
 
-// export async function hashPassword(password: string): Promise<string> {
-//   const salt = await bcryptjs.genSalt(10);
-//   return bcryptjs.hash(password, salt);
-// }
+export async function hashPassword(password: string): Promise<string> {
+  const salt = await bcryptjs.genSalt(10);
+  return bcryptjs.hash(password, salt);
+}
 
-// export async function comparePassword(
-//   password: string,
-//   hashedPassword: string
-// ): Promise<boolean> {
-//   return bcryptjs.compare(password, hashedPassword);
-// }
+export async function comparePassword(
+  password: string,
+  hashedPassword: string,
+): Promise<boolean> {
+  return bcryptjs.compare(password, hashedPassword);
+}
 
-// export function generateAccessToken(userId: string, role: string): string {
-//   return jwt.sign({ userId, role }, JWT_SECRET, {
-//     expiresIn: ACCESS_TOKEN_EXPIRY,
-//   });
-// }
+export function generateAccessToken(userId: string, role: string): string {
+  return jwt.sign({ userId, role }, JWT_SECRET, {
+    expiresIn: ACCESS_TOKEN_EXPIRY,
+  });
+}
 
-// export function generateRefreshToken(userId: string): string {
-//   return jwt.sign({ userId }, JWT_REFRESH_SECRET, {
-//     expiresIn: REFRESH_TOKEN_EXPIRY,
-//   });
-// }
+export function generateRefreshToken(userId: string): string {
+  return jwt.sign({ userId }, JWT_REFRESH_SECRET, {
+    expiresIn: REFRESH_TOKEN_EXPIRY,
+  });
+}
 
 type AccessTokenPayload = {
   userId: string;
@@ -45,26 +47,27 @@ export function verifyAccessToken(token: string): AccessTokenPayload | null {
   }
 }
 
-// export function verifyRefreshToken(token: string): { userId: string } | null {
-//   try {
-//     const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as { userId: string };
-//     return decoded;
-//   } catch {
-//     return null;
-//   }
-// }
+export function verifyRefreshToken(token: string): { userId: string } | null {
+  try {
+    const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as { userId: string };
+    return decoded;
+  } catch {
+    return null;
+  }
+}
 
-// export function getRefreshTokenExpiry(): Date {
-//   const expiryStr = REFRESH_TOKEN_EXPIRY;
-//   const date = new Date();
+export function getRefreshTokenExpiry(): Date {
+  const expiryStr =
+    typeof REFRESH_TOKEN_EXPIRY === "string" ? REFRESH_TOKEN_EXPIRY : "7d";
+  const date = new Date();
 
-//   if (expiryStr.endsWith("d")) {
-//     const days = parseInt(expiryStr);
-//     date.setDate(date.getDate() + days);
-//   } else if (expiryStr.endsWith("h")) {
-//     const hours = parseInt(expiryStr);
-//     date.setHours(date.getHours() + hours);
-//   }
+  if (expiryStr.endsWith("d")) {
+    const days = parseInt(expiryStr, 10);
+    date.setDate(date.getDate() + days);
+  } else if (expiryStr.endsWith("h")) {
+    const hours = parseInt(expiryStr, 10);
+    date.setHours(date.getHours() + hours);
+  }
 
-//   return date;
-// }
+  return date;
+}
