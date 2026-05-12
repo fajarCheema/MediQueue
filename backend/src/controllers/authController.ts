@@ -9,6 +9,11 @@ import {
   hashPassword,
   verifyRefreshToken,
 } from "../utils/auth";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+const verificationToken = process.env.EMAIL_VERIFY_TOKEN || "";
+const verificationLink = `http://localhost:3000/verify-email?token=${verificationToken}`;
 
 const CreateUserSchema = z.object({
   email: z.string().email("Invalid email format"),
@@ -134,12 +139,47 @@ const authController = {
         },
       });
 
+      await prisma.emailVerificationToken.create({
+        data: {
+          token: verificationToken,
+          userId: user.id,
+          expiresAt: new Date(
+            Date.now() + 1000 * 60 * 60, // 1 hour
+          ),
+        },
+      });
+
+      //send email to user with verification link containing the token
+      (async function () {
+        const { data, error } = await resend.emails.send({
+          from: "noreply@mediqueue.com",
+          to: user.email,
+          subject: "Verify your email",
+          html: `
+    <p>Click below to verify your email:</p>
+
+    <a href="${verificationLink}">
+      Verify Email
+    </a>
+  `,
+        });
+
+        if (error) {
+          return console.error({ error });
+        }
+
+        console.log({ data });
+      })();
       res.status(200).json({
-        user: {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          role: user.role,
+        message:
+          "Signup successful. Please verify your email to activate your account.",
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            role: user.role,
+          },
         },
         accessToken,
         refreshToken,
@@ -265,6 +305,59 @@ const authController = {
       res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
       res.status(500).json({ error: "Logout failed" });
+    }
+  },
+
+  verifyEmail: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const token = req.query.token as string;
+
+      if (!token) {
+        res.status(400).json({
+          error: "Token missing",
+        });
+
+        return;
+      }
+      const verificationToken = await prisma.emailVerificationToken.findUnique({
+        where: {
+          token,
+        },
+      });
+
+      if (!verificationToken) {
+        res.status(400).json({
+          error: "Invalid token",
+        });
+
+        return;
+      }
+      if (verificationToken.expiresAt < new Date()) {
+        res.status(400).json({
+          error: "Token expired",
+        });
+        return;
+      }
+
+      await prisma.user.update({
+        where: {
+          id: verificationToken.userId,
+        },
+        data: {
+          is_verified: true,
+        },
+      });
+
+      await prisma.emailVerificationToken.delete({
+        where: {
+          token,
+        },
+      });
+      res.status(200).json({
+        message: "Email verified successfully",
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Email verification failed" });
     }
   },
 };

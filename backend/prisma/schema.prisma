@@ -14,26 +14,35 @@ enum Role {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  username    String   @unique
+  id          String  @id @default(uuid())
+  email       String  @unique
+  username    String  @unique
   password    String
   role        Role
-  is_verified  Boolean  @default(false)
+  is_verified Boolean @default(false)
 
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  refreshTokens RefreshToken[]
+  refreshTokens          RefreshToken[] //1:many
+  emailVerificationToken EmailVerificationToken? //only one
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
+  id         String   @id @default(uuid())
+  token      String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
   created_at DateTime @default(now())
 }
 
+model EmailVerificationToken {
+  id     String @id @default(uuid())
+  token  String @unique
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  expiresAt  DateTime
+  created_at DateTime @default(now())
+}
